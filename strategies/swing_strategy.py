@@ -1,10 +1,12 @@
 """
 Swing Strategy for NQ Futures  
 EMA Crossover with Daily Trend Filter - High Win Rate Focus
+NY Session Only (9:30 AM - 4:00 PM ET)
 """
 
 import logging
 from typing import Optional
+import pytz
 
 import pandas as pd
 import numpy as np
@@ -12,15 +14,17 @@ import numpy as np
 
 class SwingStrategy:
     """
-    EMA Cross with Trend Filter
+    EMA Cross with Trend Filter - NY Session Only
     - Daily trend filter (EMA 200 on daily)
     - 4H EMA crossover for entries
     - Wide stops, smaller TP for high win rate
+    - Only trade during NY session (9:30 AM - 4:00 PM ET)
     """
     
-    def __init__(self, symbol: str = 'NQ'):
+    def __init__(self, symbol: str = 'NQ', ny_session_only: bool = True):
         self.logger = logging.getLogger(__name__)
         self.symbol = symbol
+        self.ny_session_only = ny_session_only
         
         # 4H parameters
         self.fast_ema = 8
@@ -31,6 +35,29 @@ class SwingStrategy:
         self.stop_atr = 1.2
         self.tp_atr = 1.4  # 1.17:1 - very achievable
         
+        # NY session hours (ET)
+        self.ny_open = 9.5  # 9:30 AM
+        self.ny_close = 16.0  # 4:00 PM
+    
+    def _is_ny_session(self, timestamp) -> bool:
+        """Check if timestamp is within NY session (9:30 AM - 4:00 PM ET)."""
+        if not self.ny_session_only:
+            return True
+        
+        # Convert to ET
+        try:
+            et = timestamp.tz_convert('America/New_York')
+            hour = et.hour + et.minute / 60.0
+            return self.ny_open <= hour < self.ny_close
+        except:
+            # If no timezone, assume it's already ET or UTC
+            hour = timestamp.hour + timestamp.minute / 60.0
+            # Adjust for UTC to ET (UTC-5 or UTC-4)
+            hour -= 5  # rough EST
+            if hour < 0:
+                hour += 24
+            return self.ny_open <= hour < self.ny_close
+    
     def get_signal(self, df: pd.DataFrame) -> Optional[dict]:
         """Generate trading signal."""
         if df is None or len(df) < 100:
