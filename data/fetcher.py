@@ -38,19 +38,11 @@ class DataFetcher:
         timeframe: str = '1h',
         periods: int = 200
     ) -> Optional[pd.DataFrame]:
-        """
-        Fetch recent market data.
-        
-        Args:
-            timeframe: Data timeframe (1m, 5m, 15m, 1h, 1d)
-            periods: Number of periods to fetch
-            
-        Returns:
-            DataFrame with OHLCV data
-        """
+        """Fetch recent market data."""
         try:
             ticker = yf.Ticker(self.ticker)
-            df = ticker.history(period=f'{periods}{self._timeframe_to_yahoo(timeframe)}')
+            # Use '2y' max since yfinance limits to 2 years
+            df = ticker.history(period='2y', interval=self._timeframe_to_yahoo(timeframe))
             
             if df.empty:
                 self.logger.warning(f"No data returned for {self.ticker}")
