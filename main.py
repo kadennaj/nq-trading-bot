@@ -41,8 +41,8 @@ def main():
     parser.add_argument('--symbol', default='NQ', help='Futures symbol (default: NQ)')
     parser.add_argument('--mode', choices=['backtest', 'paper', 'live'], default='paper',
                         help='Trading mode (default: paper)')
-    parser.add_argument('--broker', choices=['internal', 'alpaca'], default='internal',
-                        help='Broker to use (default: internal)')
+    parser.add_argument('--broker', choices=['paper', 'alpaca', 'ibkr'], default='paper',
+                        help='Broker to use (default: paper)')
     parser.add_argument('--strategy', default='swing', help='Strategy to use (default: swing)')
     parser.add_argument('--interval', type=int, default=15, 
                         help='Check interval in minutes (default: 15)')
@@ -71,6 +71,15 @@ def main():
         
         if broker is None:
             logger.error("Failed to initialize Alpaca broker. Check API keys.")
+            sys.exit(1)
+    elif args.broker == 'ibkr':
+        from execution.ibkr_broker import IBKRBroker
+        ibkr_paper = (args.mode != 'live')  # Paper mode for paper/live
+        broker = IBKRBroker(paper=ibkr_paper)
+        try:
+            broker.connect()
+        except Exception as e:
+            logger.error(f"Failed to connect to IBKR: {e}")
             sys.exit(1)
     else:
         broker = Broker(mode=args.mode, symbol=args.symbol)
