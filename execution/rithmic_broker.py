@@ -114,6 +114,11 @@ class RithmicBroker:
             self.logger.error(f"Order failed: {e}")
             return None
     
+    # Alias for engine compatibility
+    def execute(self, action, entry_price, stop_loss, take_profit):
+        """Alias for place_order - for engine compatibility."""
+        return self.place_order(action, 1, 'limit', stop_loss, take_profit)
+    
     def close_position(self, exit_price: float = None) -> Optional[dict]:
         """Close current position."""
         if self.position == 0:
