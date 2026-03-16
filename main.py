@@ -41,7 +41,7 @@ def main():
     parser.add_argument('--symbol', default='NQ', help='Futures symbol (default: NQ)')
     parser.add_argument('--mode', choices=['backtest', 'paper', 'live'], default='paper',
                         help='Trading mode (default: paper)')
-    parser.add_argument('--broker', choices=['paper', 'alpaca', 'ibkr'], default='paper',
+    parser.add_argument('--broker', choices=['paper', 'alpaca', 'ibkr', 'rithmic'], default='paper',
                         help='Broker to use (default: paper)')
     parser.add_argument('--strategy', default='swing', help='Strategy to use (default: swing)')
     parser.add_argument('--interval', type=int, default=15, 
@@ -64,23 +64,14 @@ def main():
     
     # Initialize broker
     if args.broker == 'alpaca':
-        if args.mode == 'live':
-            broker = create_alpaca_broker(paper=False)
-        else:
-            broker = create_alpaca_broker(paper=True)
-        
-        if broker is None:
-            logger.error("Failed to initialize Alpaca broker. Check API keys.")
-            sys.exit(1)
+        from execution.alpaca_broker import create_alpaca_broker
+        broker = create_alpaca_broker(paper=(args.mode == 'paper'), symbol=args.symbol)
     elif args.broker == 'ibkr':
-        from execution.ibkr_broker import IBKRBroker
-        ibkr_paper = (args.mode != 'live')  # Paper mode for paper/live
-        broker = IBKRBroker(paper=ibkr_paper)
-        try:
-            broker.connect()
-        except Exception as e:
-            logger.error(f"Failed to connect to IBKR: {e}")
-            sys.exit(1)
+        from execution.ibkr_broker import create_ibkr_broker
+        broker = create_ibkr_broker(paper=(args.mode == 'paper'))
+    elif args.broker == 'rithmic':
+        from execution.rithmic_broker import create_rithmic_broker
+        broker = create_rithmic_broker(paper=(args.mode == 'paper'), symbol=args.symbol)
     else:
         broker = Broker(mode=args.mode, symbol=args.symbol)
     
