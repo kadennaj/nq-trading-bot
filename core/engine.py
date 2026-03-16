@@ -24,7 +24,8 @@ class TradingEngine:
         strategy: SwingStrategy,
         symbol: str = 'NQ',
         mode: str = 'paper',
-        check_interval: int = 15
+        check_interval: int = 15,
+        alert_manager=None
     ):
         self.logger = logging.getLogger(__name__)
         self.data_fetcher = data_fetcher
@@ -33,6 +34,7 @@ class TradingEngine:
         self.symbol = symbol
         self.mode = mode
         self.check_interval = check_interval
+        self.alert_manager = alert_manager
         
         # Track trades for stats
         self.trades = []
@@ -110,6 +112,11 @@ class TradingEngine:
             })
             self.daily_trades[today] = trades_today + 1
             self.logger.info(f"Trade executed: {action} {self.symbol} @ {entry_price}")
+            
+            # Send alert
+            if self.alert_manager:
+                signal['entry_price'] = entry_price
+                self.alert_manager.send_trade_signal(signal, entry_price)
     
     def run_backtest(self, start_date: str, end_date: str):
         """Run backtesting mode."""

@@ -18,6 +18,7 @@ from data.fetcher import DataFetcher
 from execution.broker import Broker
 from execution.alpaca_broker import create_alpaca_broker
 from strategies.swing_strategy import SwingStrategy
+from utils.alerts import create_alert_manager
 
 
 def setup_logging(verbose: bool = False):
@@ -77,6 +78,12 @@ def main():
     
     strategy = SwingStrategy(symbol=args.symbol)
     
+    # Initialize alert manager for live/paper trading
+    alert_manager = None
+    if args.mode != 'backtest':
+        alert_manager = create_alert_manager(enable_sms=True, enable_email=False)
+        logger.info("Alerts enabled - you'll receive SMS notifications for trades")
+    
     # Initialize trading engine
     engine = TradingEngine(
         data_fetcher=data_fetcher,
@@ -84,7 +91,8 @@ def main():
         strategy=strategy,
         symbol=args.symbol,
         mode=args.mode,
-        check_interval=args.interval
+        check_interval=args.interval,
+        alert_manager=alert_manager
     )
     
     if args.mode == 'backtest':
