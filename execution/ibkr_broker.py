@@ -7,7 +7,7 @@ import logging
 from datetime import datetime
 from typing import Optional
 
-from ib_insync import IB, Fut, MarketOrder, StopOrder, LimitOrder
+from ib_insync import IB, Future, MarketOrder, StopOrder, LimitOrder
 
 
 class IBKRBroker:
@@ -39,7 +39,7 @@ class IBKRBroker:
             self.logger.info(f"Connected to IBKR (paper={self.paper})")
             
             # Set up NQ futures contract
-            self.contract =Fut('NQ', 'GLOBEX', 'USD')
+            self.contract = Future('NQ', 'GLOBEX', 'USD')
             self.ib.qualifyContracts(self.contract)
             self.logger.info(f"Contract qualified: {self.contract}")
             
