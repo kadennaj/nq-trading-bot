@@ -24,12 +24,12 @@ class DataFetcher:
         
     def _get_ticker(self, symbol: str) -> str:
         """Map symbol to Yahoo Finance ticker."""
-        # NQ = Nasdaq 100 Futures
+        # NQ = Nasdaq 100 Futures - use futures format
         ticker_map = {
-            'NQ': '^NDX',  # Using NDX as proxy for NQ
-            'ES': '^GSPC',  # S&P 500
-            'YM': '^DJI',   # Dow Jones
-            'RTY': '^RUT',  # Russell 2000
+            'NQ': 'NQ=F',  # Yahoo Finance futures format
+            'ES': 'ES=F',  # S&P 500 Futures
+            'YM': 'YM=F',  # Dow Jones Futures
+            'RTY': 'RTY=F', # Russell 2000 Futures
         }
         return ticker_map.get(symbol, symbol)
     
