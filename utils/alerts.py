@@ -1,93 +1,97 @@
 """
-Alert System
-Sends SMS notifications for trading signals via Twilio
+Alert System - Zo Native
+Sends SMS via Zo's API from trading bot
 """
 
 import logging
 import os
-from datetime import datetime
+import requests
+import subprocess
+import sys
 
-from dotenv import load_dotenv
-
-load_dotenv()
+logger = logging.getLogger(__name__)
 
 
 class AlertManager:
-    """Manages alerts for trading signals."""
+    """Sends alerts via Zo's SMS system."""
     
-    def __init__(self, enable_sms: bool = True, enable_email: bool = True):
-        self.logger = logging.getLogger(__name__)
+    def __init__(self, enable_sms: bool = True, enable_email: bool = False):
         self.enable_sms = enable_sms
         self.enable_email = enable_email
-        
-        # Twilio credentials from environment
-        self.twilio_sid = os.environ.get('TWILIO_ACCOUNT_SID', '')
-        self.twilio_token = os.environ.get('TWILIO_AUTH_TOKEN', '')
-        self.twilio_phone = os.environ.get('TWILIO_PHONE_NUMBER', '')
-        self.my_phone = os.environ.get('MY_PHONE_NUMBER', '')
-        
-        if self.twilio_sid and self.twilio_token:
-            from twilio.rest import Client
-            self.twilio_client = Client(self.twilio_sid, self.twilio_token)
-        else:
-            self.twilio_client = None
-            self.logger.warning("Twilio not configured - SMS alerts disabled")
+        self.zo_token = os.environ.get('ZO_CLIENT_IDENTITY_TOKEN', '')
+        logger.info("Alert manager initialized - using Zo SMS")
     
-    def send_trade_signal(self, signal: dict, current_price: float):
-        """Send alert for new trade signal."""
-        action = signal['action'].upper()
-        entry = signal.get('entry_price', current_price)
-        stop = signal.get('stop_loss', 'N/A')
-        tp = signal.get('take_profit', 'N/A')
+    def send_trade_signal(self, signal: dict, entry_price: float):
+        """Send alert when trade signal is generated."""
+        if not self.enable_sms:
+            return
         
-        message = (
-            f"🚨 NQ TRADE SIGNAL\n"
-            f"Action: {action}\n"
-            f"Entry: {entry:.2f}\n"
-            f"Stop: {stop}\n"
-            f"TP: {tp}\n"
-            f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-        )
+        action = signal.get('action', 'UNKNOWN').upper()
+        stop_loss = signal.get('stop_loss', 0)
+        take_profit = signal.get('take_profit', 0)
         
-        if self.enable_sms:
-            self._send_sms(message)
+        msg = f"🔔 NQ TRADE SIGNAL\n"
+        msg += f"Action: {action}\n"
+        msg += f"Entry: {entry_price:.2f}\n"
+        msg += f"SL: {stop_loss:.2f} | TP: {take_profit:.2f}"
+        
+        self._send_sms(msg)
     
-    def send_trade_update(self, trade: dict):
-        """Send alert for trade exit."""
+    def send_trade_execution(self, trade: dict):
+        """Send alert when trade is executed."""
+        if not self.enable_sms:
+            return
+        
         action = trade.get('action', 'UNKNOWN').upper()
+        entry = trade.get('entry_price', 0)
+        
+        msg = f"✅ NQ TRADE EXECUTED\n"
+        msg += f"{action} @ {entry:.2f}"
+        
+        self._send_sms(msg)
+    
+    def send_trade_close(self, trade: dict):
+        """Send alert when trade is closed."""
+        if not self.enable_sms:
+            return
+        
         pnl = trade.get('pnl', 0)
-        exit_reason = trade.get('exit_reason', 'unknown')
+        reason = trade.get('exit_reason', 'unknown')
         
         emoji = "✅" if pnl > 0 else "❌"
+        msg = f"{emoji} NQ TRADE CLOSED\n"
+        msg += f"PnL: {pnl:.2f} pts\n"
+        msg += f"Reason: {reason}"
         
-        message = (
-            f"{emoji} NQ TRADE CLOSED\n"
-            f"Action: {action}\n"
-            f"PnL: {pnl:.2f} pts\n"
-            f"Exit: {exit_reason}\n"
-            f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-        )
-        
-        if self.enable_sms:
-            self._send_sms(message)
+        self._send_sms(msg)
     
     def _send_sms(self, message: str):
-        """Send SMS via Twilio."""
-        if not self.twilio_client or not self.my_phone:
-            self.logger.warning(f"SMS not configured. Message: {message}")
+        """Send SMS via Zo API."""
+        logger.info(f"ALERT: {message}")
+        
+        if not self.zo_token:
+            logger.warning("No ZO_CLIENT_IDENTITY_TOKEN found, skipping SMS")
             return
         
         try:
-            self.twilio_client.messages.create(
-                body=message,
-                from_=self.twilio_phone,
-                to=self.my_phone
+            # Use Zo's SMS API
+            response = requests.post(
+                "https://api.zo.com/zo/sms",
+                headers={
+                    "Authorization": f"Bearer {self.zo_token}",
+                    "Content-Type": "application/json"
+                },
+                json={"message": message},
+                timeout=10
             )
-            self.logger.info(f"SMS sent: {message[:50]}...")
+            if response.status_code == 200:
+                logger.info("SMS sent successfully")
+            else:
+                logger.warning(f"SMS failed: {response.status_code}")
         except Exception as e:
-            self.logger.error(f"Failed to send SMS: {e}")
+            logger.warning(f"SMS error: {e}")
 
 
-def create_alert_manager(enable_sms: bool = True, enable_email: bool = True) -> AlertManager:
+def create_alert_manager(enable_sms: bool = True, enable_email: bool = False) -> AlertManager:
     """Factory function to create AlertManager."""
     return AlertManager(enable_sms=enable_sms, enable_email=enable_email)

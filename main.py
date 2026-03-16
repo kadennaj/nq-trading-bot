@@ -81,7 +81,10 @@ def main():
     # Initialize alert manager for live/paper trading
     alert_manager = None
     if args.mode != 'backtest':
-        alert_manager = create_alert_manager(enable_sms=True, enable_email=False)
+        alert_manager = create_alert_manager(
+            enable_sms=True,
+            enable_email=False
+        )
         logger.info("Alerts enabled - you'll receive SMS notifications for trades")
     
     # Initialize trading engine
