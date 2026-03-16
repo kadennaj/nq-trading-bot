@@ -64,12 +64,17 @@ def main():
     data_fetcher = DataFetcher(symbol=args.symbol)
     
     # Initialize broker
-    if args.broker == 'alpaca':
-        from execution.alpaca_broker import create_alpaca_broker
-        broker = create_alpaca_broker(paper=(args.mode == 'paper'), symbol=args.symbol)
+    if args.broker == 'paper':
+        from execution.broker import Broker
+        broker = Broker(mode=args.mode, symbol=args.symbol)
     elif args.broker == 'ibkr':
-        from execution.ibkr_broker import create_ibkr_broker
-        broker = create_ibkr_broker(paper=(args.mode == 'paper'))
+        from execution.ibkr_broker import get_broker
+        broker = get_broker(paper=(args.mode == 'paper'))
+        try:
+            broker.connect()
+        except Exception as e:
+            logger.error(f"Failed to connect to IBKR: {e}")
+            sys.exit(1)
     elif args.broker == 'rithmic':
         from execution.rithmic_broker import create_rithmic_broker
         broker = create_rithmic_broker(paper=(args.mode == 'paper'), symbol=args.symbol)

@@ -168,6 +168,11 @@ class IBKRBroker:
         except Exception as e:
             self.logger.error(f"Error closing position: {e}")
             return None
+    
+    # Alias for engine compatibility
+    def execute(self, action, entry_price, stop_loss, take_profit):
+        """Execute a trade - alias for place_order."""
+        return self.place_order(action, 1, stop_loss, take_profit)
 
 
 def get_broker(paper: bool = True) -> IBKRBroker:
