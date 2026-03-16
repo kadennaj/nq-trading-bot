@@ -7,6 +7,7 @@ Designed for ~0.5 trades/day with high win rate and low drawdown
 
 import argparse
 import logging
+import os
 import signal
 import sys
 from datetime import datetime, timedelta
@@ -15,6 +16,7 @@ from pathlib import Path
 from core.engine import TradingEngine
 from data.fetcher import DataFetcher
 from execution.broker import Broker
+from execution.alpaca_broker import create_alpaca_broker
 from strategies.swing_strategy import SwingStrategy
 
 
@@ -39,6 +41,8 @@ def main():
     parser.add_argument('--symbol', default='NQ', help='Futures symbol (default: NQ)')
     parser.add_argument('--mode', choices=['backtest', 'paper', 'live'], default='paper',
                         help='Trading mode (default: paper)')
+    parser.add_argument('--broker', choices=['internal', 'alpaca'], default='internal',
+                        help='Broker to use (default: internal)')
     parser.add_argument('--strategy', default='swing', help='Strategy to use (default: swing)')
     parser.add_argument('--interval', type=int, default=15, 
                         help='Check interval in minutes (default: 15)')
@@ -57,7 +61,20 @@ def main():
     
     # Initialize components
     data_fetcher = DataFetcher(symbol=args.symbol)
-    broker = Broker(mode=args.mode, symbol=args.symbol)
+    
+    # Initialize broker
+    if args.broker == 'alpaca':
+        if args.mode == 'live':
+            broker = create_alpaca_broker(paper=False)
+        else:
+            broker = create_alpaca_broker(paper=True)
+        
+        if broker is None:
+            logger.error("Failed to initialize Alpaca broker. Check API keys.")
+            sys.exit(1)
+    else:
+        broker = Broker(mode=args.mode, symbol=args.symbol)
+    
     strategy = SwingStrategy(symbol=args.symbol)
     
     # Initialize trading engine
@@ -77,6 +94,14 @@ def main():
         engine.run_backtest(args.start_date, args.end_date)
     else:
         # Paper or live trading
+        logger.info("Starting live trading loop...")
+        logger.info(f"Check interval: {args.interval} minutes")
+        
+        # Show account info for Alpaca
+        if args.broker == 'alpaca':
+            account = broker.get_account()
+            logger.info(f"Account: ${account.get('portfolio_value', 0):.2f}")
+        
         engine.run_live()
 
 
